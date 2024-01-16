@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "dgSpecHash": "RtYHsYKViNiwgH3YtdwE2lA/nc60v1xPi+mvWez7SB8WEMzYjtKUKf6hJ3ID7VmEMF49XL7lbs+C/YdOYxuhvg==",
+  "success": true,
+  "projectFilePath": "D:\\Test\\PracticePro\\PracticePro\\PracticePro.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Pravin\\.nuget\\packages\\jquery\\1.4.1\\jquery.1.4.1.nupkg.sha512",
+    "C:\\Users\\Pravin\\.nuget\\packages\\kendouicore\\2023.3.1114\\kendouicore.2023.3.1114.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1602",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "KendoUICore 2023.3.1114 does not provide an inclusive lower bound for dependency jQuery (<= 3.7.1). An approximate best match of jQuery 1.4.1 was resolved.",
+      "libraryId": "jQuery",
+      "targetGraphs": [
+        "net6.0"
+      ]
+    }
+  ]
+}

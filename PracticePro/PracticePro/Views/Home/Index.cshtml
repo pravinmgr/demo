@@ -1,0 +1,49 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+</div>
+
+@using Kendo.Mvc.UI
+
+@(Html.Kendo().Grid<Employee>()
+    .Name("Grid")
+    .Columns(columns =>
+    {
+        columns.Bound(o => o.Id).Groupable(false);
+        columns.Bound(o => o.FirstName);
+        columns.Bound(o => o.LastName);
+        columns.Bound(o => o.Company);
+    })
+     .ColumnMenu(col => col.Filterable(true))
+   
+     .Pageable()
+    .Sortable()
+    .Navigatable()
+    .Resizable(r => r.Columns(true))
+    .Reorderable(r => r.Columns(true))
+    .Groupable(g => g.ShowFooter(false))
+    .Filterable()
+    .Scrollable()
+    .Selectable(selectable => selectable.Mode(GridSelectionMode.Single))
+    .Events(events => events.Change("onGridRowSelected"))
+
+    .DataSource(dataSource => dataSource
+        .Ajax()
+        .Read(read => read.Action("CustomAjaxBinding_Read", "Home"))
+        .PageSize(100)
+    )
+)
+
+<script>
+    function onGridRowSelected(e) {
+        var selectedDataItem = this.dataItem(this.select());
+        if (selectedDataItem) {
+            // Handle row click event
+            console.log("Row clicked: " + selectedDataItem.Id + " - " + selectedDataItem.FirstName);
+        }
+    }
+</script>
