@@ -1,0 +1,28 @@
+ public ActionResult ExportFilteredUsers(DateTime? fromDate, DateTime? toDate)
+ {
+     DataTable dt = new DataTable("InterestedUsers");
+     dt.Columns.AddRange(new DataColumn[5] { new DataColumn("User Name"),
+                                     new DataColumn("Email"),
+                                     new DataColumn("Mobile Number"),
+                                     new DataColumn("Ability Level"),
+                                     new DataColumn("Interested On") });
+     NewsletterUserList newslettersList = new NewsletterUserList();
+     newslettersList.FromDate = fromDate;
+     newslettersList.ToDate = toDate;
+     List<NewsletterUserList> model = _userService.GetNewsletterUserList(newslettersList, null, null, 0, 0, LoginUserID).Result.ToList();
+     foreach (var user in model)
+     {
+         dt.Rows.Add(user.UserName, user.Email, user.MobileNumber, user.AbilityLevel, user.InterestedOn);
+     }
+     using (XLWorkbook wb = new XLWorkbook())
+     {
+         wb.Worksheets.Add(dt);
+         using (MemoryStream stream = new MemoryStream())
+         {
+             wb.SaveAs(stream);
+             return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Interested Users.xlsx");
+         }
+     }
+ }
+
+closeXML
