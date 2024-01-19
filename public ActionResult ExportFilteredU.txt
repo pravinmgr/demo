@@ -1,3 +1,67 @@
+
+using System;
+using System.Collections.Generic;
+using ClosedXML.Excel;
+
+class Program
+{
+    static void Main()
+    {
+        // Sample data as a list of anonymous objects
+        var data = new List<object>
+        {
+            new { Id = 1, Name = "John Doe", Age = 25 },
+            new { Id = 2, Name = "Jane Doe", Age = 30 },
+            // Add more objects as needed
+        };
+
+        // File path to save the Excel file
+        string filePath = "Data.xlsx";
+
+        // Export data to Excel
+        ExportToExcel(data, filePath);
+
+        Console.WriteLine($"Excel file exported to: {filePath}");
+    }
+
+    static void ExportToExcel(List<object> data, string filePath)
+    {
+        using (var workbook = new XLWorkbook())
+        {
+            var worksheet = workbook.Worksheets.Add("Data");
+
+            // Assuming the properties are consistent among the objects in the list
+            var properties = data.First().GetType().GetProperties();
+
+            // Add headers
+            for (int i = 0; i < properties.Length; i++)
+            {
+                worksheet.Cell(1, i + 1).Value = properties[i].Name;
+            }
+
+            // Add data
+            int row = 2;
+            foreach (var item in data)
+            {
+                for (int i = 0; i < properties.Length; i++)
+                {
+                    worksheet.Cell(row, i + 1).Value = properties[i].GetValue(item);
+                }
+                row++;
+            }
+
+            workbook.SaveAs(filePath);
+        }
+    }
+}
+
+
+
+
+
+
+
+
  public ActionResult ExportFilteredUsers(DateTime? fromDate, DateTime? toDate)
  {
      DataTable dt = new DataTable("InterestedUsers");
