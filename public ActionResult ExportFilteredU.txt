@@ -1,6 +1,92 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+
+// ...
+
+string columnnamelist = "id,name,location";
+string[] columns = columnnamelist.Split(',');
+
+// Create a dictionary to map property names to expressions
+var propertyExpressions = new Dictionary<string, Expression<Func<Department, object>>>
+{
+    { "id", d => d.id },
+    { "name", d => d.name },
+    { "location", d => d.location },
+    // Add other columns as needed
+};
+
+// Build the projection dynamically based on the columns
+var projection = columns
+    .Select(column =>
+    {
+        if (propertyExpressions.TryGetValue(column.Trim(), out var expression))
+        {
+            return expression;
+        }
+        else
+        {
+            // Handle the case where the column is not found (log, throw exception, etc.)
+            return null;
+        }
+    })
+    .Where(expression => expression != null)
+    .ToArray();
+
+// Perform the query with the dynamic projection
+var data = dbcontext.department
+    .Select(d => new
+    {
+        // Dynamically apply the selected columns
+        SelectedColumns = projection.Select(expr => expr.Compile()(d)),
+    })
+    .ToList();
+
+
+
+
+using System;
+using System.Linq;
+using System.Reflection;
+
+// ...
+
+string columnnamelist = "id,name,location";
+string[] columns = columnnamelist.Split(',');
+
+var data = dbcontext.department
+    .Select(entity =>
+    {
+        var entityType = entity.GetType();
+        var result = new ExpandoObject() as IDictionary<string, object>;
+
+        foreach (var column in columns)
+        {
+            var property = entityType.GetProperty(column.Trim(), BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+            
+            if (property != null)
+            {
+                result[column] = property.GetValue(entity);
+            }
+            else
+            {
+                // Handle the case where the property is not found (log, throw exception, etc.)
+            }
+        }
+
+        return result;
+    })
+    .ToList();
+
+
+
+
+
+
+using System;
+using System.Collections.Generic;
 using ClosedXML.Excel;
 
 class Program
