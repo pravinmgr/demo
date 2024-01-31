@@ -1,0 +1,107 @@
+public static class AjaxCustomBindingExtensions
+{
+    public static IQueryable<T> ApplyPaging<T>(this IQueryable<T> data, int page, int pageSize)
+    {
+        if (pageSize > 0 && page > 0)
+        {
+            data = data.Skip((page - 1) * pageSize);
+        }
+
+        data = data.Take(pageSize);
+
+        return data;
+    }
+
+    public static IEnumerable ApplyGrouping<T>(this IQueryable<T> data, IList<GroupDescriptor> groupDescriptors)
+    {
+        if (groupDescriptors != null && groupDescriptors.Any())
+        {
+            Func<IEnumerable<T>, IEnumerable<AggregateFunctionsGroup>> selector = null;
+            foreach (var group in groupDescriptors.Reverse())
+            {
+                if (selector == null)
+                {
+                    selector = BuildInnerGroup(data, group);
+                }
+                else
+                {
+                    selector = BuildGroup(group, selector);
+                }
+            }
+
+            return selector.Invoke(data).ToList();
+        }
+
+        return data.ToList();
+    }
+
+    private static Func<IEnumerable<T>, IEnumerable<AggregateFunctionsGroup>> BuildGroup<T>(GroupDescriptor group,
+        Func<IEnumerable<T>, IEnumerable<AggregateFunctionsGroup>> selectorBuilder)
+    {
+        var tempSelector = selectorBuilder;
+        return g => g.GroupBy(group.MemberSelector.Compile())
+                     .Select(c => new AggregateFunctionsGroup
+                     {
+                         Key = c.Key,
+                         HasSubgroups = true,
+                         Member = group.Member,
+                         Items = tempSelector.Invoke(c).ToList()
+                     });
+    }
+
+    private static Func<IEnumerable<T>, IEnumerable<AggregateFunctionsGroup>> BuildInnerGroup<T>(IQueryable<T> group,
+        GroupDescriptor groupDescriptor)
+    {
+        return g => g.GroupBy(groupDescriptor.MemberSelector.Compile())
+                .Select(i => new AggregateFunctionsGroup
+                {
+                    Key = i.Key,
+                    Member = groupDescriptor.Member,
+                    Items = i.ToList()
+                });
+    }
+
+    public static IQueryable<T> ApplySorting<T>(this IQueryable<T> data,
+                IList<GroupDescriptor> groupDescriptors, IList<SortDescriptor> sortDescriptors)
+    {
+        if (groupDescriptors != null && groupDescriptors.Any())
+        {
+            foreach (var groupDescriptor in groupDescriptors.Reverse())
+            {
+                data = AddSortExpression(data, groupDescriptor.SortDirection, groupDescriptor.MemberSelector);
+            }
+        }
+
+        if (sortDescriptors != null && sortDescriptors.Any())
+        {
+            foreach (SortDescriptor sortDescriptor in sortDescriptors)
+            {
+                data = AddSortExpression(data, sortDescriptor.SortDirection, sortDescriptor.MemberSelector);
+            }
+        }
+
+        return data;
+    }
+
+    private static IQueryable<T> AddSortExpression<T>(IQueryable<T> data, ListSortDirection sortDirection, Expression<Func<T, object>> memberSelector)
+    {
+        if (sortDirection == ListSortDirection.Ascending)
+        {
+            data = data.OrderBy(memberSelector);
+        }
+        else
+        {
+            data = data.OrderByDescending(memberSelector);
+        }
+        return data;
+    }
+
+    public static IQueryable<T> ApplyFiltering<T>(this IQueryable<T> data, IList<IFilterDescriptor> filterDescriptors)
+    {
+        if (filterDescriptors.Any())
+        {
+            data = data.Where(ExpressionBuilder.Expression<T>(filterDescriptors, false));
+        }
+        return data;
+    }
+}
