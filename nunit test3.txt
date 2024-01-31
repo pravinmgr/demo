@@ -1,0 +1,111 @@
+using System.Collections.Generic;
+using System.Linq;
+using Kendo.Mvc.Examples.Models;
+using Kendo.Mvc.Extensions;
+using Kendo.Mvc.UI;
+using Microsoft.AspNetCore.Mvc;
+using NUnit.Framework;
+
+[TestFixture]
+public class GridControllerTests
+{
+    [Test]
+    public void CustomAjaxBinding_Read_Returns_JsonResult()
+    {
+        // Arrange
+        var controller = new GridController();
+
+        // Act
+        var result = controller.CustomAjaxBinding_Read(new DataSourceRequest());
+
+        // Assert
+        Assert.IsInstanceOf<JsonResult>(result);
+    }
+
+    [Test]
+    public void ApplyOrdersPaging_Applies_Paging_Correctly()
+    {
+        // Arrange
+        IQueryable<OrderViewModel> data = GetTestOrderData().AsQueryable();
+        int page = 2;
+        int pageSize = 5;
+
+        // Act
+        var result = AjaxCustomBindingExtensions.ApplyOrdersPaging(data, page, pageSize);
+
+        // Assert
+        Assert.AreEqual(pageSize, result.Count());
+        CollectionAssert.AreEqual(data.Skip((page - 1) * pageSize).Take(pageSize), result);
+    }
+
+    [Test]
+    public void ApplyOrdersGrouping_Applies_Grouping_Correctly()
+    {
+        // Arrange
+        IQueryable<OrderViewModel> data = GetTestOrderData().AsQueryable();
+        var groupDescriptors = new List<GroupDescriptor>
+        {
+            new GroupDescriptor { Member = "ShipCity" }
+        };
+
+        // Act
+        var result = AjaxCustomBindingExtensions.ApplyOrdersGrouping(data, groupDescriptors);
+
+        // Assert
+        Assert.AreEqual(1, result.Count());
+        Assert.IsTrue(result.First() is AggregateFunctionsGroup);
+    }
+
+    [Test]
+    public void ApplyOrdersSorting_Applies_Sorting_Correctly()
+    {
+        // Arrange
+        IQueryable<OrderViewModel> data = GetTestOrderData().AsQueryable();
+        var groupDescriptors = new List<GroupDescriptor>
+        {
+            new GroupDescriptor { Member = "ShipCity", SortDirection = ListSortDirection.Descending }
+        };
+        var sortDescriptors = new List<SortDescriptor>
+        {
+            new SortDescriptor { Member = "OrderID", SortDirection = ListSortDirection.Ascending }
+        };
+
+        // Act
+        var result = AjaxCustomBindingExtensions.ApplyOrdersSorting(data, groupDescriptors, sortDescriptors);
+
+        // Assert
+        Assert.AreEqual("OrderID", result.ElementType.GetProperty("OrderID").Name);
+        Assert.AreEqual(ListSortDirection.Ascending, sortDescriptors.First().SortDirection);
+    }
+
+    [Test]
+    public void ApplyOrdersFiltering_Applies_Filtering_Correctly()
+    {
+        // Arrange
+        IQueryable<OrderViewModel> data = GetTestOrderData().AsQueryable();
+        var filterDescriptors = new List<IFilterDescriptor>
+        {
+            new FilterDescriptor { Member = "ShipCity", Operator = FilterOperator.IsEqualTo, Value = "City1" }
+        };
+
+        // Act
+        var result = AjaxCustomBindingExtensions.ApplyOrdersFiltering(data, filterDescriptors);
+
+        // Assert
+        Assert.AreEqual(1, result.Count());
+        Assert.AreEqual("City1", result.First().ShipCity);
+    }
+
+    private IEnumerable<OrderViewModel> GetTestOrderData()
+    {
+        // Create and return a list of test OrderViewModel data
+        // Add the necessary logic based on your actual data structure
+        // Example:
+        return new List<OrderViewModel>
+        {
+            new OrderViewModel { OrderID = 1, ShipCity = "City1", ShipCountry = "Country1", ShipName = "Name1" },
+            new OrderViewModel { OrderID = 2, ShipCity = "City2", ShipCountry = "Country2", ShipName = "Name2" },
+            // Add more test data as needed
+        };
+    }
+}

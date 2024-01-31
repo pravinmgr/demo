@@ -1,0 +1,113 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Kendo.Mvc.Examples.Models;
+using Kendo.Mvc.Extensions;
+using Kendo.Mvc.UI;
+
+public class GridControllerTests
+{
+    public void CustomAjaxBinding_Read_Returns_JsonResult()
+    {
+        // Arrange
+        var controller = new GridController();
+
+        // Act
+        var result = controller.CustomAjaxBinding_Read(new DataSourceRequest());
+
+        // Assert
+        Console.WriteLine(result is JsonResult ? "Pass" : "Fail");
+    }
+
+    public void ApplyOrdersPaging_Applies_Paging_Correctly()
+    {
+        // Arrange
+        IQueryable<OrderViewModel> data = GetTestOrderData().AsQueryable();
+        int page = 2;
+        int pageSize = 5;
+
+        // Act
+        var result = AjaxCustomBindingExtensions.ApplyOrdersPaging(data, page, pageSize);
+
+        // Assert
+        Console.WriteLine(result.Count() == pageSize ? "Pass" : "Fail");
+        Console.WriteLine(result.SequenceEqual(data.Skip((page - 1) * pageSize).Take(pageSize)) ? "Pass" : "Fail");
+    }
+
+    public void ApplyOrdersGrouping_Applies_Grouping_Correctly()
+    {
+        // Arrange
+        IQueryable<OrderViewModel> data = GetTestOrderData().AsQueryable();
+        var groupDescriptors = new List<GroupDescriptor>
+        {
+            new GroupDescriptor { Member = "ShipCity" }
+        };
+
+        // Act
+        var result = AjaxCustomBindingExtensions.ApplyOrdersGrouping(data, groupDescriptors);
+
+        // Assert
+        Console.WriteLine(result.Count() == 1 && result.First() is AggregateFunctionsGroup ? "Pass" : "Fail");
+    }
+
+    public void ApplyOrdersSorting_Applies_Sorting_Correctly()
+    {
+        // Arrange
+        IQueryable<OrderViewModel> data = GetTestOrderData().AsQueryable();
+        var groupDescriptors = new List<GroupDescriptor>
+        {
+            new GroupDescriptor { Member = "ShipCity", SortDirection = ListSortDirection.Descending }
+        };
+        var sortDescriptors = new List<SortDescriptor>
+        {
+            new SortDescriptor { Member = "OrderID", SortDirection = ListSortDirection.Ascending }
+        };
+
+        // Act
+        var result = AjaxCustomBindingExtensions.ApplyOrdersSorting(data, groupDescriptors, sortDescriptors);
+
+        // Assert
+        Console.WriteLine(result.ElementType.GetProperty("OrderID").Name == "OrderID" ? "Pass" : "Fail");
+        Console.WriteLine(sortDescriptors.First().SortDirection == ListSortDirection.Ascending ? "Pass" : "Fail");
+    }
+
+    public void ApplyOrdersFiltering_Applies_Filtering_Correctly()
+    {
+        // Arrange
+        IQueryable<OrderViewModel> data = GetTestOrderData().AsQueryable();
+        var filterDescriptors = new List<IFilterDescriptor>
+        {
+            new FilterDescriptor { Member = "ShipCity", Operator = FilterOperator.IsEqualTo, Value = "City1" }
+        };
+
+        // Act
+        var result = AjaxCustomBindingExtensions.ApplyOrdersFiltering(data, filterDescriptors);
+
+        // Assert
+        Console.WriteLine(result.Count() == 1 && result.First().ShipCity == "City1" ? "Pass" : "Fail");
+    }
+
+    private IEnumerable<OrderViewModel> GetTestOrderData()
+    {
+        // Create and return a list of test OrderViewModel data
+        // Add the necessary logic based on your actual data structure
+        // Example:
+        return new List<OrderViewModel>
+        {
+            new OrderViewModel { OrderID = 1, ShipCity = "City1", ShipCountry = "Country1", ShipName = "Name1" },
+            new OrderViewModel { OrderID = 2, ShipCity = "City2", ShipCountry = "Country2", ShipName = "Name2" },
+            // Add more test data as needed
+        };
+    }
+
+    public static void Main()
+    {
+        // Run the tests
+        var tests = new GridControllerTests();
+        tests.CustomAjaxBinding_Read_Returns_JsonResult();
+        tests.ApplyOrdersPaging_Applies_Paging_Correctly();
+        tests.ApplyOrdersGrouping_Applies_Grouping_Correctly();
+        tests.ApplyOrdersSorting_Applies_Sorting_Correctly();
+        tests.ApplyOrdersFiltering_Applies_Filtering_Correctly();
+    }
+}
