@@ -1,0 +1,59 @@
+public static IEnumerable ApplyGrouping<T>(this IQueryable<T> data, IList<GroupDescriptor> groupDescriptors)
+{
+    if (groupDescriptors != null && groupDescriptors.Any())
+    {
+        Func<IEnumerable<T>, IEnumerable<AggregateFunctionsGroup>> selector = null;
+        foreach (var group in groupDescriptors.Reverse())
+        {
+            if (selector == null)
+            {
+                // Adjust the conditions based on your model properties
+                selector = Items => BuildInnerGroup(Items, group.Member);
+            }
+            else
+            {
+                // Adjust the conditions based on your model properties
+                selector = BuildGroup(group.Member, selector);
+            }
+        }
+
+        return selector.Invoke(data).ToList();
+    }
+
+    return data.ToList();
+}
+
+private static Func<IEnumerable<T>, IEnumerable<AggregateFunctionsGroup>>
+    BuildGroup(string fieldName, Func<IEnumerable<T>, IEnumerable<AggregateFunctionsGroup>> selectorBuilder)
+{
+    var tempSelector = selectorBuilder;
+    var itemType = typeof(T);
+    var parameter = Expression.Parameter(itemType, "item");
+    var property = Expression.Property(parameter, fieldName);
+    var lambda = Expression.Lambda<Func<T, object>>(Expression.Convert(property, typeof(object)), parameter);
+
+    return items => items.GroupBy(lambda.Compile())
+                         .Select(group => new AggregateFunctionsGroup
+                         {
+                             Key = group.Key,
+                             HasSubgroups = true,
+                             Member = fieldName,
+                             Items = tempSelector.Invoke(group).ToList()
+                         });
+}
+
+private static IEnumerable<AggregateFunctionsGroup> BuildInnerGroup(IEnumerable<T> group, string fieldName)
+{
+    var itemType = typeof(T);
+    var parameter = Expression.Parameter(itemType, "item");
+    var property = Expression.Property(parameter, fieldName);
+    var lambda = Expression.Lambda<Func<T, object>>(Expression.Convert(property, typeof(object)), parameter);
+
+    return group.GroupBy(lambda.Compile())
+                .Select(innerGroup => new AggregateFunctionsGroup
+                {
+                    Key = innerGroup.Key,
+                    Member = fieldName,
+                    Items = innerGroup.ToList()
+                });
+}

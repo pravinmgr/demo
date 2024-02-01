@@ -1,0 +1,78 @@
+public void ConfigureServices(IServiceCollection services)
+{
+    // Other configurations...
+
+    services.AddDistributedMemoryCache(); // Use a distributed cache for production
+
+    services.AddSession(options =>
+    {
+        options.Cookie.Name = "YourAppSessionCookie";
+        options.IdleTimeout = TimeSpan.FromMinutes(20); // Set the session timeout
+        options.Cookie.HttpOnly = true;
+        options.Cookie.IsEssential = true;
+    });
+
+    // Other configurations...
+}
+
+
+public class HomeController : Controller
+{
+    public IActionResult Index()
+    {
+        HttpContext.Session.SetString("UserName", "JohnDoe");
+        return View();
+    }
+
+    public IActionResult ReadSession()
+    {
+        var userName = HttpContext.Session.GetString("UserName");
+        // Use the session value as needed
+        return View();
+    }
+}
+
+
+[Authorize(Roles = "Admin")]
+public class AdminController : Controller
+{
+    public IActionResult Index()
+    {
+        return View();
+    }
+}
+
+
+
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+public class SessionAndRoleAuthorizeAttribute : Attribute, IAuthorizationFilter
+{
+    public void OnAuthorization(AuthorizationFilterContext context)
+    {
+        var sessionValue = context.HttpContext.Session.GetString("UserName");
+
+        if (string.IsNullOrEmpty(sessionValue))
+        {
+            context.Result = new RedirectToActionResult("Login", "Account", null);
+            return;
+        }
+
+        // Check role here if needed
+        var user = context.HttpContext.User;
+        if (!user.IsInRole("Admin"))
+        {
+            context.Result = new ForbidResult();
+            return;
+        }
+    }
+}
+
+
+[SessionAndRoleAuthorize]
+public class SecureController : Controller
+{
+    public IActionResult Index()
+    {
+        return View();
+    }
+}

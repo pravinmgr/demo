@@ -1,0 +1,152 @@
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public class RequireSessionAttribute : Attribute, IActionFilter
+{
+    public void OnActionExecuting(ActionExecutingContext context)
+    {
+        if (context.HttpContext.Session.GetString("UserId") == null)
+        {
+            // Session is not available, redirect to the index page or any other page as needed
+            context.Result = new RedirectToActionResult("Index", "Home", null);
+        }
+    }
+
+    public void OnActionExecuted(ActionExecutedContext context)
+    {
+        // You can add any post-processing logic here if needed
+    }
+}
+
+
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public class RequireSessionAndRoleAttribute : Attribute, IActionFilter
+{
+    private readonly string _requiredRole;
+
+    public RequireSessionAndRoleAttribute(string requiredRole)
+    {
+        _requiredRole = requiredRole;
+    }
+
+    public void OnActionExecuting(ActionExecutingContext context)
+    {
+        // Check if the user has an active session
+        if (context.HttpContext.Session.GetString("UserId") == null)
+        {
+            // Session is not available, redirect to the index page or any other page as needed
+            context.Result = new RedirectToActionResult("Index", "Home", null);
+            return;
+        }
+
+        // Check if the user has the required role
+        var userRoles = context.HttpContext.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        if (!userRoles.Contains(_requiredRole))
+        {
+            // User does not have the required role, redirect to an access denied page or handle it accordingly
+            context.Result = new RedirectToActionResult("AccessDenied", "Home", null);
+        }
+    }
+
+    public void OnActionExecuted(ActionExecutedContext context)
+    {
+        // You can add any post-processing logic here if needed
+    }
+}
+
+
+
+[RequireSessionAndRole("Admin")]
+public class YourController : Controller
+{
+    public IActionResult YourAction()
+    {
+        // Your action logic here
+        return View();
+    }
+}
+
+
+
+
+appste
+
+using AbilityFix.Core;
+using AbilityFix.Helpers;
+using AbilityFix.Service;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Linq;
+
+namespace AbilityFix.Filters
+{
+    /// <summary>
+    ///
+    /// </summary>
+    /// <seealso cref="System.Web.Mvc.FilterAttribute" />
+    /// <seealso cref="System.Web.Mvc.IAuthorizationFilter" />
+    public class UserRolePrivilegeAttribute : Attribute, IAuthorizationFilter
+    {
+        /// <summary>
+        /// Gets or sets the user role service.
+        /// </summary>
+        /// <value>
+        /// The user role service.
+        /// </value>
+        public IUserRoleService userRoleService { set; get; }
+
+        /// <summary>
+        /// Gets or sets the privilege permission.
+        /// </summary>
+        /// <value>
+        /// The privilege permission.
+        /// </value>
+        public IPrivilegePermission privilegePermission { get; set; }
+
+        /// <summary>
+        /// The _privilege
+        /// </summary>
+        private int _privilege;
+
+        /// <summary>
+        /// The _permissions
+        /// </summary>
+        private int _permissions;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserRolePrivilegeAttribute"/> class.
+        /// </summary>
+        /// <param name="privilege">The privilege.</param>
+        /// <param name="permissions">The permissions.</param>
+        public UserRolePrivilegeAttribute(UserPrivilege privilege, UserPermissions permissions)
+        {
+            _privilege = (int)privilege;
+            _permissions = (int)permissions;
+        }
+
+        public async void OnAuthorization(AuthorizationFilterContext filterContext)
+        {
+            var userRoleService = filterContext.HttpContext.RequestServices.GetService<IUserRoleService>();
+            var privilegePermission = filterContext.HttpContext.RequestServices.GetService<IPrivilegePermission>();
+            var totalPrivilegeVal = 0;
+            if (filterContext.HttpContext.User.Claims.Count() != 0)
+            {
+                totalPrivilegeVal = await userRoleService.IsPrivilegeAccessable(_privilege, _permissions, Convert.ToInt32(filterContext.HttpContext.User.Claims.Where(x => x.Type == "Role_Id").FirstOrDefault().Value));
+            }
+
+            if (!(privilegePermission.CheckPrivilegePermissionAccess(totalPrivilegeVal, _permissions).Result)
+                || (filterContext.HttpContext.User == null))
+            {
+                filterContext.Result = new RedirectToRouteResult(
+                         new RouteValueDictionary(new
+                         {
+                             controller = "Error",
+                             action = "AccessDenied",
+                             pageUrl = filterContext.HttpContext.Request.Path
+                             //  filterContext.HttpContext.Request.Query["ReturnUrl"]
+                         }));
+            }
+        }
+    }
+}
