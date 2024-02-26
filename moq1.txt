@@ -1,0 +1,35 @@
+using System.Collections.Generic;
+using Moq;
+using Microsoft.AspNetCore.Mvc;
+using YourNamespace; // Add your namespace here
+
+namespace YourNamespace.Tests
+{
+    public class MyServiceTests
+    {
+        [Fact]
+        public void TestGetD()
+        {
+            // Arrange
+            var dataSourceRequest = new DataSourceRequest();
+            var searchParams = new List<SearchBuildParams> { /* Add SearchBuildParams objects if needed */ };
+            var expectedResult = new DatasourceResult(); // Set expected result as per your test case
+
+            // Mock dependencies
+            var dataSourceResultMock = new Mock<IDataSourceResult>();
+            dataSourceResultMock.Setup(x => x.ToDataResult<VWDestatus>(dataSourceRequest, It.IsAny<Func<YourEntity, VWDestatus>>()))
+                                .Returns(expectedResult);
+
+            var myServiceMock = new Mock<myservice>(); // Mocking the service
+            myServiceMock.Setup(x => x.GetD(dataSourceRequest, searchParams))
+                         .Returns(expectedResult); // Assuming your service returns DatasourceResult
+
+            // Act
+            var result = myServiceMock.Object.GetD(dataSourceRequest, searchParams);
+
+            // Assert
+            Assert.NotNull(result);
+            // Assert other conditions based on your expected behavior
+        }
+    }
+}
