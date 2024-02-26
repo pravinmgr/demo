@@ -32,3 +32,45 @@ public class MyServiceTests
         // Additional assertions if necessary
     }
 }
+
+
+
+
+
+
+
+
+
+
+using Moq;
+using System.Collections.Generic;
+using System.Linq;
+using System.Data.Entity;
+
+// Assuming Student is your entity class and DbContextClass is your DbContext class
+
+// Create some sample data
+List<Student> students = new List<Student>
+{
+    new Student { Id = 1, Name = "Alice" },
+    new Student { Id = 2, Name = "Bob" },
+    // Add more sample data if needed
+};
+
+// Convert the sample data to a queryable collection
+var data = students.AsQueryable();
+
+// Create a mock DbSet
+var mockSet = new Mock<DbSet<Student>>();
+
+// Setup behavior for DbSet
+mockSet.As<IQueryable<Student>>().Setup(m => m.Provider).Returns(data.Provider);
+mockSet.As<IQueryable<Student>>().Setup(m => m.Expression).Returns(data.Expression);
+mockSet.As<IQueryable<Student>>().Setup(m => m.ElementType).Returns(data.ElementType);
+mockSet.As<IQueryable<Student>>().Setup(m => m.GetEnumerator()).Returns(data.GetEnumerator());
+
+// Create a mock DbContext
+var mockContext = new Mock<DbContextClass>();
+
+// Setup behavior for DbContext to return the mock DbSet
+mockContext.Setup(c => c.Students).Returns(mockSet.Object);
