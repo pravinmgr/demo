@@ -1,0 +1,76 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace YourNamespace.Tests
+{
+    [TestClass]
+    public class YourDbContextTests
+    {
+        private DbContextOptions<YourDbContext> _options;
+        
+        [TestInitialize]
+        public void Initialize()
+        {
+            _options = new DbContextOptionsBuilder<YourDbContext>()
+                .UseInMemoryDatabase(databaseName: "TestDatabase")
+                .Options;
+
+            // Seed the in-memory database with test data
+            using (var dbContext = new YourDbContext(_options))
+            {
+                dbContext.Employees.Add(new YourDbContext.Employee { Id = 1, Name = "Test Employee 1" });
+                dbContext.Employees.Add(new YourDbContext.Employee { Id = 2, Name = "Test Employee 2" });
+                dbContext.SaveChanges();
+            }
+        }
+
+        [TestMethod]
+        public void Test_GetAllEmployees()
+        {
+            // Arrange
+            using (var dbContext = new YourDbContext(_options))
+            {
+                // Act
+                List<YourDbContext.Employee> allEmployees = dbContext.Employees.ToList();
+
+                // Assert
+                Assert.AreEqual(2, allEmployees.Count);
+            }
+        }
+
+        [TestMethod]
+        public void Test_GetEmployeeById()
+        {
+            // Arrange
+            using (var dbContext = new YourDbContext(_options))
+            {
+                // Act
+                var employee = dbContext.Employees.FirstOrDefault(e => e.Id == 1);
+
+                // Assert
+                Assert.IsNotNull(employee);
+                Assert.AreEqual("Test Employee 1", employee.Name);
+            }
+        }
+
+        [TestMethod]
+        public void Test_AddEmployee()
+        {
+            // Arrange
+            using (var dbContext = new YourDbContext(_options))
+            {
+                // Act
+                dbContext.Employees.Add(new YourDbContext.Employee { Id = 3, Name = "New Test Employee" });
+                dbContext.SaveChanges();
+
+                // Assert
+                var addedEmployee = dbContext.Employees.FirstOrDefault(e => e.Id == 3);
+                Assert.IsNotNull(addedEmployee);
+                Assert.AreEqual("New Test Employee", addedEmployee.Name);
+            }
+        }
+    }
+}

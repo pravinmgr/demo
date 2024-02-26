@@ -1,0 +1,58 @@
+using System;
+
+// Base class A
+class A
+{
+    // Method to be overridden
+    public virtual void MethodToOverride()
+    {
+        Console.WriteLine("Method overridden in class A");
+    }
+}
+
+// Derived class A1
+class A1 : A
+{
+    // Override MethodToOverride
+    public override void MethodToOverride()
+    {
+        Console.WriteLine("Method overridden in class A1");
+    }
+}
+
+// Derived class A2
+class A2 : A
+{
+    // Override MethodToOverride
+    public override void MethodToOverride()
+    {
+        Console.WriteLine("Method overridden in class A2");
+    }
+}
+
+// Derived class A3
+class A3 : A
+{
+    // Override MethodToOverride
+    public override void MethodToOverride()
+    {
+        Console.WriteLine("Method overridden in class A3");
+    }
+}
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        // Dynamically manage objects of A1, A2, A3
+        ManageObjects(new A1());
+        ManageObjects(new A2());
+        ManageObjects(new A3());
+    }
+
+    // Function to dynamically manage objects of class A, A1, A2, A3
+    static void ManageObjects(A obj)
+    {
+        obj.MethodToOverride();
+    }
+}

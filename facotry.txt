@@ -1,0 +1,67 @@
+using System;
+
+// Base class
+public abstract class BaseClass
+{
+    public abstract void SomeMethod();
+}
+
+// Inherited classes
+public class SubClass1 : BaseClass
+{
+    public override void SomeMethod()
+    {
+        Console.WriteLine("SubClass1 method called.");
+    }
+}
+
+public class SubClass2 : BaseClass
+{
+    public override void SomeMethod()
+    {
+        Console.WriteLine("SubClass2 method called.");
+    }
+}
+
+public class SubClass3 : BaseClass
+{
+    public override void SomeMethod()
+    {
+        Console.WriteLine("SubClass3 method called.");
+    }
+}
+
+// Factory class
+public static class ObjectFactory
+{
+    public static BaseClass CreateObject(int condition)
+    {
+        switch (condition)
+        {
+            case 1:
+                return new SubClass1();
+            case 2:
+                return new SubClass2();
+            case 3:
+                return new SubClass3();
+            default:
+                throw new ArgumentException("Invalid condition provided.");
+        }
+    }
+}
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        // Example usage
+        BaseClass obj1 = ObjectFactory.CreateObject(1);
+        obj1.SomeMethod();
+
+        BaseClass obj2 = ObjectFactory.CreateObject(2);
+        obj2.SomeMethod();
+
+        BaseClass obj3 = ObjectFactory.CreateObject(3);
+        obj3.SomeMethod();
+    }
+}
