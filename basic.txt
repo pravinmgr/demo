@@ -1,3 +1,54 @@
+
+
+
+using Moq;
+using NUnit.Framework;
+using Microsoft.AspNetCore.Http;
+using Autofac;
+using Autofac.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
+
+[TestFixture]
+public class MyControllerTests
+{
+    private IContainer _container;
+
+    [SetUp]
+    public void Setup()
+    {
+        var builder = new ContainerBuilder();
+        builder.RegisterType<MyController>();
+        builder.Register(c =>
+        {
+            var mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
+            var mockSession = new Mock<ISession>();
+            mockSession.Setup(s => s.GetString("myses")).Returns("true");
+            mockHttpContextAccessor.Setup(x => x.HttpContext.Session).Returns(mockSession.Object);
+            return mockHttpContextAccessor.Object;
+        }).As<IHttpContextAccessor>();
+        _container = builder.Build();
+    }
+
+    [Test]
+    public void TestIndexAction()
+    {
+        // Arrange
+        using var scope = _container.BeginLifetimeScope();
+        var controller = scope.Resolve<MyController>();
+
+        // Act
+        var result = controller.Index();
+
+        // Assert
+        // Add your assertions here
+    }
+}
+
+
+
+
+
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
