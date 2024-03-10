@@ -1,0 +1,249 @@
+using System;
+using Novell.Directory.Ldap;
+
+public class LdapService
+{
+    private readonly LdapConnection _ldapConnection;
+    private readonly string _ldapHost;
+    private readonly int _ldapPort;
+    private readonly string _ldapBaseDn;
+    private readonly string _ldapUsername;
+    private readonly string _ldapPassword;
+
+    public LdapService(string ldapHost, int ldapPort, string ldapBaseDn, string ldapUsername, string ldapPassword)
+    {
+        _ldapHost = ldapHost;
+        _ldapPort = ldapPort;
+        _ldapBaseDn = ldapBaseDn;
+        _ldapUsername = ldapUsername;
+        _ldapPassword = ldapPassword;
+
+        _ldapConnection = new LdapConnection
+        {
+            SecureSocketLayer = false, // Change to true if LDAPS is used
+            ConnectionTimeout = 30000,
+            UserDefinedServerCertValidationDelegate = (sender, certificate, chain, sslPolicyErrors) => true
+        };
+        _ldapConnection.Connect(_ldapHost, _ldapPort);
+        _ldapConnection.Bind(_ldapUsername, _ldapPassword);
+    }
+
+    public LdapSearchResults Search(string filter)
+    {
+        var searchConstraints = new LdapSearchConstraints();
+        var searchResults = _ldapConnection.Search(_ldapBaseDn, LdapConnection.SCOPE_SUB, filter, null, false, searchConstraints);
+        return searchResults;
+    }
+}
+
+// Usage
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var ldapHost = "ldap.example.com";
+        var ldapPort = 389; // or 636 for LDAPS
+        var ldapBaseDn = "dc=example,dc=com";
+        var ldapUsername = "username";
+        var ldapPassword = "password";
+
+        var ldapService = new LdapService(ldapHost, ldapPort, ldapBaseDn, ldapUsername, ldapPassword);
+
+        // Example filter to retrieve all users
+        var filter = "(objectClass=user)";
+        var searchResults = ldapService.Search(filter);
+
+        while (searchResults.hasMore())
+        {
+            var ldapEntry = searchResults.next();
+            var attributes = ldapEntry.getAttributeSet();
+            var attributeIterator = attributes.iterator();
+
+            while (attributeIterator.hasNext())
+            {
+                var attribute = (LdapAttribute)attributeIterator.next();
+                var attributeName = attribute.getName();
+                var attributeValue = attribute.getStringValue();
+
+                Console.WriteLine($"{attributeName}: {attributeValue}");
+            }
+        }
+    }
+}
+
+
+
+
+
+other way 
+
+
+
+using System;
+using Novell.Directory.Ldap;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        try
+        {
+            // Connect to LDAP server
+            using (var ldapConnection = new LdapConnection())
+            {
+                ldapConnection.Connect("ldap.example.com", 389);
+                ldapConnection.Bind("cn=admin,dc=example,dc=com", "password");
+
+                // Search for entries
+                var searchBase = "dc=example,dc=com";
+                var searchFilter = "(objectClass=person)";
+                var searchAttributes = new string[] { "cn", "sn", "mail" };
+                var searchScope = LdapConnection.SCOPE_SUB;
+
+                var searchResults = ldapConnection.Search(searchBase, searchScope, searchFilter, searchAttributes, false);
+                while (searchResults.HasMore())
+                {
+                    var ldapEntry = searchResults.Next();
+                    Console.WriteLine($"CN: {ldapEntry.getAttribute("cn").StringValue}");
+                    Console.WriteLine($"SN: {ldapEntry.getAttribute("sn").StringValue}");
+                    Console.WriteLine($"Mail: {ldapEntry.getAttribute("mail").StringValue}");
+                }
+            }
+        }
+        catch (LdapException e)
+        {
+            Console.WriteLine($"LDAP Exception: {e.Message}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Exception: {e.Message}");
+        }
+    }
+}
+
+
+
+
+other way 
+
+
+using System;
+using Novell.Directory.Ldap;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        // LDAP server connection details
+        string ldapServer = "your-ldap-server";
+        int ldapPort = 389; // Default LDAP port
+        string baseDN = "dc=example,dc=com";
+        string adminDN = "cn=admin,dc=example,dc=com"; // The DN of an admin user
+        string adminPassword = "adminPassword"; // Admin user's password
+
+        // Create LDAP connection
+        using (LdapConnection ldapConnection = new LdapConnection())
+        {
+            try
+            {
+                // Connect to LDAP server
+                ldapConnection.Connect(ldapServer, ldapPort);
+                ldapConnection.Bind(adminDN, adminPassword);
+
+                // Search operation
+                LdapSearchResults searchResults = ldapConnection.Search(
+                    baseDN, // Base DN
+                    LdapConnection.SCOPE_SUB, // Search scope
+                    "(objectClass=person)", // LDAP filter
+                    null, // Specify attributes to retrieve, null retrieves all attributes
+                    false // Do not retrieve attributes only
+                );
+
+                ProcessSearchResults(searchResults);
+
+                // Add operation
+                AddUser(ldapConnection, "cn=newuser,dc=example,dc=com", new LdapAttribute[]
+                {
+                    new LdapAttribute("objectClass", "person"),
+                    new LdapAttribute("cn", "newuser"),
+                    new LdapAttribute("sn", "lastname")
+                });
+
+                // Modify operation
+                ModifyUser(ldapConnection, "cn=newuser,dc=example,dc=com", "givenName", "NewFirstName");
+
+                // Delete operation
+                DeleteUser(ldapConnection, "cn=newuser,dc=example,dc=com");
+            }
+            catch (LdapException e)
+            {
+                Console.WriteLine($"LDAP error: {e.Message}");
+            }
+        }
+    }
+
+    static void ProcessSearchResults(LdapSearchResults searchResults)
+    {
+        while (searchResults.hasMore())
+        {
+            LdapEntry entry = null;
+            try
+            {
+                entry = searchResults.next();
+                Console.WriteLine("DN: " + entry.DN);
+                LdapAttributeSet attributeSet = entry.getAttributeSet();
+                IEnumerator ienum = attributeSet.GetEnumerator();
+                while (ienum.MoveNext())
+                {
+                    LdapAttribute attribute = (LdapAttribute)ienum.Current;
+                    Console.WriteLine(attribute.Name + ": " + attribute.StringValue);
+                }
+                Console.WriteLine("---------------------------------");
+            }
+            catch (LdapException e)
+            {
+                Console.WriteLine($"Error: {e.Message}");
+            }
+        }
+    }
+
+    static void AddUser(LdapConnection ldapConnection, string dn, LdapAttribute[] attributes)
+    {
+        try
+        {
+            ldapConnection.Add(new LdapEntry(dn, attributes));
+            Console.WriteLine("User added successfully.");
+        }
+        catch (LdapException e)
+        {
+            Console.WriteLine($"Error adding user: {e.Message}");
+        }
+    }
+
+    static void ModifyUser(LdapConnection ldapConnection, string dn, string attributeName, string newValue)
+    {
+        try
+        {
+            LdapModification ldapModification = new LdapModification(LdapModification.REPLACE, new LdapAttribute(attributeName, newValue));
+            ldapConnection.Modify(dn, ldapModification);
+            Console.WriteLine("User modified successfully.");
+        }
+        catch (LdapException e)
+        {
+            Console.WriteLine($"Error modifying user: {e.Message}");
+        }
+    }
+
+    static void DeleteUser(LdapConnection ldapConnection, string dn)
+    {
+        try
+        {
+            ldapConnection.Delete(dn);
+            Console.WriteLine("User deleted successfully.");
+        }
+        catch (LdapException e)
+        {
+            Console.WriteLine($"Error deleting user: {e.Message}");
+        }
+    }
+}

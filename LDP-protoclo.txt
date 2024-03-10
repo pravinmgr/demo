@@ -1,0 +1,170 @@
+System.DirectoryServices.Protocols
+
+
+
+using System;
+using System.DirectoryServices.Protocols;
+
+public class LdapService
+{
+    private readonly LdapConnection _ldapConnection;
+    private readonly string _ldapHost;
+    private readonly int _ldapPort;
+    private readonly string _ldapBaseDn;
+    private readonly string _ldapUsername;
+    private readonly string _ldapPassword;
+
+    public LdapService(string ldapHost, int ldapPort, string ldapBaseDn, string ldapUsername, string ldapPassword)
+    {
+        _ldapHost = ldapHost;
+        _ldapPort = ldapPort;
+        _ldapBaseDn = ldapBaseDn;
+        _ldapUsername = ldapUsername;
+        _ldapPassword = ldapPassword;
+
+        _ldapConnection = new LdapConnection($"{_ldapHost}:{_ldapPort}");
+        _ldapConnection.AuthType = AuthType.Basic;
+        _ldapConnection.SessionOptions.ProtocolVersion = 3;
+        _ldapConnection.Bind(new NetworkCredential(_ldapUsername, _ldapPassword));
+    }
+
+    public SearchResultEntryCollection Search(string filter)
+    {
+        var searchRequest = new SearchRequest(
+            _ldapBaseDn,
+            filter,
+            SearchScope.Subtree,
+            null
+        );
+
+        var searchResponse = (SearchResponse)_ldapConnection.SendRequest(searchRequest);
+        return searchResponse.Entries;
+    }
+}
+
+// Usage
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var ldapHost = "ldap.example.com";
+        var ldapPort = 389; // or 636 for LDAPS
+        var ldapBaseDn = "dc=example,dc=com";
+        var ldapUsername = "username";
+        var ldapPassword = "password";
+
+        var ldapService = new LdapService(ldapHost, ldapPort, ldapBaseDn, ldapUsername, ldapPassword);
+
+        // Example filter to retrieve all users
+        var filter = "(objectClass=user)";
+        var searchResults = ldapService.Search(filter);
+
+        foreach (SearchResultEntry entry in searchResults)
+        {
+            // Access attributes of each entry
+            foreach (string attributeName in entry.Attributes.AttributeNames)
+            {
+                foreach (var value in entry.Attributes[attributeName].GetValues(typeof(string)))
+                {
+                    Console.WriteLine($"{attributeName}: {value}");
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+second way 
+
+
+using System;
+using System.DirectoryServices.Protocols;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        // LDAP server connection details
+        string ldapServer = "ldap://your-ldap-server";
+        string baseDN = "dc=example,dc=com";
+
+        // Create LDAP connection
+        using (LdapConnection ldapConnection = new LdapConnection(ldapServer))
+        {
+            ldapConnection.AuthType = AuthType.Anonymous; // Or specify authentication type if needed
+            ldapConnection.SessionOptions.ProtocolVersion = 3; // Specify the LDAP protocol version
+            ldapConnection.Bind();
+
+            // Search operation
+            SearchRequest searchRequest = new SearchRequest(
+                baseDN, // Base DN
+                "(objectClass=user)", // LDAP filter
+                SearchScope.Subtree, // Search scope
+                null // Specify attributes to retrieve, null retrieves all attributes
+            );
+
+            SearchResponse searchResponse = (SearchResponse)ldapConnection.SendRequest(searchRequest);
+            ProcessSearchResults(searchResponse);
+
+            // Add operation
+            AddUser(ldapConnection, "cn=newuser,dc=example,dc=com", new string[] { "objectClass: user", "cn: newuser", "sn: lastname" });
+
+            // Modify operation
+            ModifyUser(ldapConnection, "cn=newuser,dc=example,dc=com", "givenName", "NewFirstName");
+
+            // Delete operation
+            DeleteUser(ldapConnection, "cn=newuser,dc=example,dc=com");
+        }
+    }
+
+    static void ProcessSearchResults(SearchResponse searchResponse)
+    {
+        foreach (SearchResultEntry entry in searchResponse.Entries)
+        {
+            Console.WriteLine("DN: " + entry.DistinguishedName);
+            foreach (string attributeName in entry.Attributes.AttributeNames)
+            {
+                Console.WriteLine(attributeName + ": " + entry.Attributes[attributeName][0]);
+            }
+            Console.WriteLine("---------------------------------");
+        }
+    }
+
+    static void AddUser(LdapConnection ldapConnection, string dn, string[] attributes)
+    {
+        AddRequest addRequest = new AddRequest(
+            dn,
+            attributes
+        );
+
+        ldapConnection.SendRequest(addRequest);
+        Console.WriteLine("User added successfully.");
+    }
+
+    static void ModifyUser(LdapConnection ldapConnection, string dn, string attributeName, string newValue)
+    {
+        ModifyRequest modifyRequest = new ModifyRequest(
+            dn,
+            DirectoryAttributeOperation.Replace,
+            new DirectoryAttribute(attributeName, newValue)
+        );
+
+        ldapConnection.SendRequest(modifyRequest);
+        Console.WriteLine("User modified successfully.");
+    }
+
+    static void DeleteUser(LdapConnection ldapConnection, string dn)
+    {
+        DeleteRequest deleteRequest = new DeleteRequest(dn);
+        ldapConnection.SendRequest(deleteRequest);
+        Console.WriteLine("User deleted successfully.");
+    }
+}

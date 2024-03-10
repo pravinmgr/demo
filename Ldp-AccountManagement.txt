@@ -1,0 +1,48 @@
+System.DirectoryServices.AccountManagement
+
+
+
+using System;
+using System.DirectoryServices.AccountManagement;
+
+public class LdapService
+{
+    private readonly PrincipalContext _ldapContext;
+
+    public LdapService(string ldapHost, string ldapUsername, string ldapPassword)
+    {
+        _ldapContext = new PrincipalContext(ContextType.Domain, ldapHost, ldapUsername, ldapPassword);
+    }
+
+    public UserPrincipal FindUser(string username)
+    {
+        return UserPrincipal.FindByIdentity(_ldapContext, IdentityType.SamAccountName, username);
+    }
+}
+
+// Usage
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var ldapHost = "ldap.example.com";
+        var ldapUsername = "username";
+        var ldapPassword = "password";
+
+        var ldapService = new LdapService(ldapHost, ldapUsername, ldapPassword);
+
+        var username = "john.doe";
+        var user = ldapService.FindUser(username);
+
+        if (user != null)
+        {
+            Console.WriteLine($"User: {user.DisplayName}");
+            Console.WriteLine($"Email: {user.EmailAddress}");
+            // Access other properties as needed
+        }
+        else
+        {
+            Console.WriteLine($"User '{username}' not found.");
+        }
+    }
+}
