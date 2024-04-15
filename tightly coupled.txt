@@ -1,0 +1,30 @@
+using NUnit.Framework;
+using Moq;
+using System.Collections.Generic;
+using System.Linq;
+
+[TestFixture]
+public class ClassTestTests
+{
+    [Test]
+    public void TestFunctionData()
+    {
+        // Arrange
+        var mockDbSet = new Mock<DbSet<Account>>();
+        mockDbSet.Setup(m => m.ToList()).Returns(new List<Account>());
+
+        var mockDbContext = new Mock<DbContext>();
+        mockDbContext.Setup(m => m.Account).Returns(mockDbSet.Object);
+
+        var mockConnectionString = new Mock<IOption<ConnectionString>>();
+        // Set up mockConnectionString as needed
+
+        var classUnderTest = new ClassTest(mockConnectionString.Object);
+
+        // Act
+        var result = classUnderTest.FunctionData();
+
+        // Assert
+        // Add your assertions here based on the expected behavior
+    }
+}
