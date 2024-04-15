@@ -1,3 +1,42 @@
+
+using NUnit.Framework;
+using Moq;
+using System.Collections.Generic;
+using System.Linq;
+
+[TestFixture]
+public class ClassTestTests
+{
+    [Test]
+    public void TestFunctionData()
+    {
+        // Arrange
+        var mockAccountData = new List<Account>(); // Mock account data
+        var mockQueryable = mockAccountData.AsQueryable(); // Convert list to IQueryable
+
+        var mockDbSet = new Mock<DbSet<Account>>();
+        mockDbSet.As<IQueryable<Account>>().Setup(m => m.Provider).Returns(mockQueryable.Provider);
+        mockDbSet.As<IQueryable<Account>>().Setup(m => m.Expression).Returns(mockQueryable.Expression);
+        mockDbSet.As<IQueryable<Account>>().Setup(m => m.ElementType).Returns(mockQueryable.ElementType);
+        mockDbSet.As<IQueryable<Account>>().Setup(m => m.GetEnumerator()).Returns(mockQueryable.GetEnumerator());
+
+        var mockDbContext = new Mock<DbContext>();
+        mockDbContext.Setup(m => m.Account).Returns(mockDbSet.Object);
+
+        var mockConnectionString = new Mock<IOption<ConnectionString>>();
+        // Set up mockConnectionString as needed
+
+        var classUnderTest = new ClassTest(mockConnectionString.Object);
+
+        // Act
+        var result = classUnderTest.FunctionData();
+
+        // Assert
+        // Add your assertions here based on the expected behavior
+    }
+}
+
+
 using NUnit.Framework;
 using Moq;
 using System.Collections.Generic;
