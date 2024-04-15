@@ -1,0 +1,53 @@
+using NUnit.Framework;
+using Moq;
+using Microsoft.Extensions.Options;
+using System.Collections.Generic;
+using System.Linq;
+
+[TestFixture]
+public class classTestTests
+{
+    [Test]
+    public void TestFunctionData()
+    {
+        // Mocking IOptions<ConnectionStrings>
+        var connOptionsMock = new Mock<IOptions<ConnectionStrings>>();
+        var connStrings = new ConnectionStrings { IspaceEntitles = "YourConnectionString" };
+        connOptionsMock.Setup(x => x.Value).Returns(connStrings);
+
+        // Mocking TestDbContext
+        var dbContextMock = new Mock<TestDbContext>(connOptionsMock.Object);
+
+        // Set up data for the mock DbSet<Account>
+        var accountsData = new List<Account>
+        {
+            new Account { /* Set properties here */ },
+            new Account { /* Set properties here */ }
+        };
+        var mockDbSet = MockDbSet(accountsData);
+
+        dbContextMock.Setup(x => x.Account).Returns(mockDbSet.Object);
+
+        // Create an instance of classTest with the mocked dependencies
+        var classTestInstance = new classTest(connOptionsMock.Object);
+
+        // Call the function to be tested
+        var result = classTestInstance.functiondata();
+
+        // Assert the result or perform further checks
+        Assert.IsNotNull(result);
+        // Add further assertions based on your test case
+    }
+
+    // Helper method to mock DbSet<Account>
+    private Mock<DbSet<T>> MockDbSet<T>(List<T> data) where T : class
+    {
+        var queryable = data.AsQueryable();
+        var mockSet = new Mock<DbSet<T>>();
+        mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
+        mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
+        mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
+        mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
+        return mockSet;
+    }
+}
