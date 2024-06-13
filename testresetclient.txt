@@ -1,0 +1,32 @@
+using Xunit;
+using Moq;
+
+namespace EmployeeTest
+{
+    public class EmployeeTest
+    {
+        [Fact]
+        public void Add_Test()
+        {
+            // Arrange
+            var restClientMock = new Mock<RestClient>();
+            var restRequestHelperMock = new Mock<RestRequestHelper>();
+            var employee = new Employee
+            {
+                clsobj = restClientMock.Object
+            };
+
+            // Setting up the mock behavior for RestRequestHelper
+            restRequestHelperMock.Setup(x => x.createRequest(It.IsAny<string>(), It.IsAny<Method>())).Returns(new RestRequest());
+            
+            // Setting up the mock behavior for RestClient
+            restClientMock.Setup(x => x.execute<model>(It.IsAny<RestRequest>())).Returns(new model());
+
+            // Act
+            var result = employee.add();
+
+            // Assert
+            Assert.NotNull(result); // Ensure that the result is not null
+        }
+    }
+}
