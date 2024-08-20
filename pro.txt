@@ -1,0 +1,52 @@
+using System;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
+
+public class AppHttpClientHandler : HttpClientHandler
+{
+    public AppHttpClientHandler()
+    {
+        // Set up Kerberos authentication for the handler
+        // This is done by setting the credentials to DefaultNetworkCredentials which will use the current user's Kerberos credentials
+        Credentials = CredentialCache.DefaultNetworkCredentials;
+        UseDefaultCredentials = true; // Ensures the handler uses the default network credentials
+        PreAuthenticate = true; // Ensures the handler sends credentials in the initial request
+    }
+}
+
+public class Program
+{
+    private static async Task Main()
+    {
+        var reqUrl = "http://example.com/api"; // Replace with your actual request URL
+        var authorizationToken = "your-auth-token"; // Replace with your actual authorization token
+        var str = "{\"key\":\"value\"}"; // Replace with your actual request body content
+
+        var handler = new AppHttpClientHandler();
+        using (var client = new HttpClient(handler))
+        {
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authorizationToken);
+            
+            // Prepare the content
+            var content = new StringContent(str, Encoding.UTF8, "application/json");
+
+            try
+            {
+                var response = await client.PostAsync(reqUrl, content);
+                response.EnsureSuccessStatusCode();
+
+                var responseBody = await response.Content.ReadAsStringAsync();
+                Console.WriteLine(responseBody);
+            }
+            catch (HttpRequestException e)
+            {
+                Console.WriteLine($"Request error: {e.Message}");
+            }
+        }
+    }
+}
