@@ -1,0 +1,133 @@
+using System;
+using System.IO;
+using System.Net;
+using System.Security.Principal;
+
+public class AppProxy : IWebProxy
+{
+    public AppProxy()
+    {
+        this.ProxyUri = new Uri("http://secure.com"); // Example proxy URI
+    }
+
+    public Uri ProxyUri { get; set; }
+
+    public ICredentials? Credentials { get; set; }
+
+    public Uri GetProxy(Uri destination)
+    {
+        Console.WriteLine($"GetProxy called with destination: {destination}");
+        return this.ProxyUri;
+    }
+
+    public bool IsBypassed(Uri host)
+    {
+        // Log bypass check
+        Console.WriteLine($"IsBypassed called with host: {host}");
+        return false; // Customize this based on your requirements
+    }
+}
+
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        string reqUrl = "http://your-request-url.com"; // Replace with your actual URL
+        string? authorizationToken = null; // Use nullable reference types
+
+        try
+        {
+            // Initialize proxy
+            var appProxy = new AppProxy();
+            Console.WriteLine($"Proxy initialized: {appProxy.ProxyUri}");
+
+            // Initialize request
+            HttpWebRequest httpWebRequest = WebRequest.Create(reqUrl) as HttpWebRequest
+                ?? throw new InvalidOperationException("Failed to create HTTP request.");
+
+            httpWebRequest.Method = "POST";
+            httpWebRequest.ContentType = "application/json";
+            httpWebRequest.Accept = "application/json";
+            httpWebRequest.Timeout = 10000000;
+            httpWebRequest.Proxy = appProxy; // Assign the proxy to the request
+            httpWebRequest.UseDefaultCredentials = true; // Use the default credentials for the current user
+            httpWebRequest.PreAuthenticate = true; // Pre-authenticate the request to send credentials immediately
+            Console.WriteLine("Proxy and credentials assigned to the request.");
+
+            // Decrypt and add authorization token
+            authorizationToken = EncryptionHelper.Decrypt(_appSettingsKeys.Value.HyosungAuthorization);
+            httpWebRequest.Headers.Add("Authorization", authorizationToken);
+            Console.WriteLine("Authorization token added.");
+
+            // Write request data
+            using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+            {
+                string str = "Your JSON data here"; // Replace with actual data
+                streamWriter.Write(str);
+                streamWriter.Flush();
+                Console.WriteLine("Request data written.");
+            }
+
+            // Get response
+            using (HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse())
+            {
+                Console.WriteLine($"Response received with status: {httpWebResponse.StatusCode}");
+            }
+        }
+        catch (WebException webEx)
+        {
+            Console.WriteLine($"WebException occurred: {webEx.Message}");
+            Console.WriteLine($"Stack Trace: {webEx.StackTrace}"); // Print the stack trace for WebException
+
+            if (webEx.Status == WebExceptionStatus.ConnectFailure)
+            {
+                Console.WriteLine("Connection failure - possible proxy issue.");
+            }
+            else if (webEx.Status == WebExceptionStatus.ProxyNameResolutionFailure)
+            {
+                Console.WriteLine("Proxy name resolution failed.");
+            }
+            else if (webEx.Status == WebExceptionStatus.Timeout)
+            {
+                Console.WriteLine("Request timed out - check proxy settings.");
+            }
+            else
+            {
+                Console.WriteLine($"WebException Status: {webEx.Status}");
+            }
+
+            if (webEx.Response != null)
+            {
+                using var responseStream = webEx.Response.GetResponseStream();
+                using var reader = new StreamReader(responseStream!); // Use null-forgiving operator
+                string errorResponse = reader.ReadToEnd();
+                Console.WriteLine($"Error response from server: {errorResponse}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception occurred: {ex.Message}");
+            Console.WriteLine($"Stack Trace: {ex.StackTrace}"); // Print the stack trace for general exceptions
+        }
+
+        // Optional: Check if Kerberos is used for authentication
+        CheckKerberosAuthentication();
+    }
+
+    static void CheckKerberosAuthentication()
+    {
+        // Check Kerberos authentication status
+        var identity = WindowsIdentity.GetCurrent();
+        Console.WriteLine($"Current user: {identity.Name}");
+        Console.WriteLine($"Authentication type: {identity.AuthenticationType}");
+
+        if (identity.AuthenticationType == "Kerberos")
+        {
+            Console.WriteLine("Kerberos authentication is working.");
+        }
+        else
+        {
+            Console.WriteLine("Kerberos authentication is not working or not used.");
+        }
+    }
+}
