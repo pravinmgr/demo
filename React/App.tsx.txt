@@ -15,3 +15,53 @@ export default App;
 npx c    reate-react-app my-app --template typescript
 
 npm install --save ag-grid-react ag-grid-community
+
+
+// GridComponent.tsx
+import React, { useState } from 'react';
+import { AgGridReact } from 'ag-grid-react';
+import { ColDef } from 'ag-grid-community'; // Import the ColDef type
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
+
+// Define the structure for row data
+interface RowData {
+  store: string;
+  datapoint: number;
+  test: string;
+  inactive: boolean;
+}
+
+const GridComponent: React.FC = () => {
+  // Sample row data
+  const [rowData] = useState<RowData[]>([
+    { store: 'Store 1', datapoint: 10, test: 'Test 1', inactive: false },
+    { store: 'Store 2', datapoint: 20, test: 'Test 2', inactive: true },
+    { store: 'Store 3', datapoint: 30, test: 'Test 3', inactive: false },
+  ]);
+
+  // Define column definitions using ColDef type
+  const [columnDefs] = useState<ColDef[]>([
+    { headerName: 'Store', field: 'store' },
+    { headerName: 'Datapoint', field: 'datapoint', sortable: true, filter: true },
+    { headerName: 'Test', field: 'test' },
+    {
+      headerName: 'InActive',
+      field: 'inactive',
+      cellRenderer: (params: any) => (params.value ? 'Yes' : 'No'),
+      sortable: true,
+    },
+  ]);
+
+  return (
+    <div className="ag-theme-alpine" style={{ height: '100%', width: '100%' }}>
+      <AgGridReact
+        rowData={rowData}
+        columnDefs={columnDefs}
+        defaultColDef={{ sortable: true, filter: true, resizable: true }}
+      />
+    </div>
+  );
+};
+
+export default GridComponent;
