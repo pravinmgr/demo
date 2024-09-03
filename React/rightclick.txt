@@ -1,0 +1,82 @@
+// GridComponent.tsx
+import React, { useState } from 'react';
+import { AgGridReact } from 'ag-grid-react';
+import { ColDef, GridOptions, MenuItemDef } from 'ag-grid-community';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
+
+interface RowData {
+  store: string;
+  datapoint: number;
+  test: string;
+  inactive: boolean;
+}
+
+const GridComponent: React.FC = () => {
+  const [rowData, setRowData] = useState<RowData[]>([
+    { store: 'Store 1', datapoint: 10, test: 'Test 1', inactive: false },
+    { store: 'Store 2', datapoint: 20, test: 'Test 2', inactive: true },
+    { store: 'Store 3', datapoint: 30, test: 'Test 3', inactive: false },
+  ]);
+
+  const [columnDefs] = useState<ColDef[]>([
+    { headerName: 'Store', field: 'store' },
+    { headerName: 'Datapoint', field: 'datapoint', sortable: true, filter: true },
+    { headerName: 'Test', field: 'test' },
+    {
+      headerName: 'InActive',
+      field: 'inactive',
+      cellRenderer: (params: any) => (params.value ? 'Yes' : 'No'),
+      sortable: true,
+    },
+  ]);
+
+  // Define a custom context menu with options
+  const getContextMenuItems = (params: any): (MenuItemDef | string)[] => {
+    const addDatapoint = {
+      name: 'Add Datapoint',
+      action: () => handleAddDatapoint(params.node.data),
+      icon: '<i class="far fa-plus-square"></i>',
+    };
+
+    const editDatapoint = {
+      name: 'Edit Datapoint',
+      action: () => handleEditDatapoint(params.node.data),
+      icon: '<i class="far fa-edit"></i>',
+    };
+
+    // You can add default items if needed using '...params.defaultItems'
+    return [addDatapoint, editDatapoint, 'separator', 'copy', 'export'];
+  };
+
+  // Handle adding a new datapoint
+  const handleAddDatapoint = (row: RowData) => {
+    console.log('Add Datapoint for:', row);
+    // Implement your logic for adding a datapoint
+    // For example, you might want to add a new row
+    setRowData([
+      ...rowData,
+      { store: row.store, datapoint: 0, test: 'New Test', inactive: false },
+    ]);
+  };
+
+  // Handle editing a datapoint
+  const handleEditDatapoint = (row: RowData) => {
+    console.log('Edit Datapoint for:', row);
+    // Implement your logic for editing a datapoint
+    // For example, you could show a modal to edit row data
+  };
+
+  return (
+    <div className="ag-theme-alpine" style={{ height: '100%', width: '100%' }}>
+      <AgGridReact
+        rowData={rowData}
+        columnDefs={columnDefs}
+        defaultColDef={{ sortable: true, filter: true, resizable: true }}
+        getContextMenuItems={getContextMenuItems} // Add custom context menu
+      />
+    </div>
+  );
+};
+
+export default GridComponent;
