@@ -1,0 +1,48 @@
+npx create-react-app my-app
+
+cd my-app
+npm start
+
+npm run build
+
+npm install --save ag-grid-react ag-grid-community
+
+
+import React, { useState } from 'react';
+import { AgGridReact } from 'ag-grid-react'; // Import AG Grid React Component
+import 'ag-grid-community/styles/ag-grid.css'; // Import Grid CSS
+import 'ag-grid-community/styles/ag-theme-alpine.css'; // Import theme CSS
+
+interface RowData {
+  store: string;
+  datapoint: number;
+  test: string;
+  inactive: boolean;
+}
+
+const GridComponent: React.FC = () => {
+  const [rowData] = useState<RowData[]>([
+    { store: 'Store 1', datapoint: 10, test: 'Test 1', inactive: false },
+    { store: 'Store 2', datapoint: 20, test: 'Test 2', inactive: true },
+    { store: 'Store 3', datapoint: 30, test: 'Test 3', inactive: false },
+  ]);
+
+  const [columnDefs] = useState([
+    { headerName: 'Store', field: 'store' },
+    { headerName: 'Datapoint', field: 'datapoint' },
+    { headerName: 'Test', field: 'test' },
+    { headerName: 'InActive', field: 'inactive', cellRenderer: (params: any) => (params.value ? 'Yes' : 'No') },
+  ]);
+
+  return (
+    <div className="ag-theme-alpine" style={{ height: 400, width: 600 }}>
+      <AgGridReact
+        rowData={rowData}
+        columnDefs={columnDefs}
+        defaultColDef={{ sortable: true, filter: true, resizable: true }}
+      />
+    </div>
+  );
+};
+
+export default GridComponent;

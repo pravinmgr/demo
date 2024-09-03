@@ -1,0 +1,22 @@
+// MainLayout.tsx
+import React from 'react';
+import MenuComponent from './MenuComponent';
+import GridComponent from './GridComponent';
+
+const MainLayout: React.FC = () => {
+  return (
+    <div style={{ display: 'flex', height: '100vh' }}>
+      {/* Left Side Menu */}
+      <div style={{ width: '200px', backgroundColor: '#f0f0f0' }}>
+        <MenuComponent />
+      </div>
+
+      {/* Right Side Grid */}
+      <div style={{ flexGrow: 1 }}>
+        <GridComponent />
+      </div>
+    </div>
+  );
+};
+
+export default MainLayout;
