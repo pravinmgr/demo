@@ -73,3 +73,7 @@ const GridComponent: React.FC = () => {
 };
 
 export default GridComponent;
+ headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
