@@ -32,3 +32,44 @@ const GridComponent: React.FC = () => {
 };
 
 export default GridComponent;
+
+
+
+import React, { useState, useEffect } from 'react';
+import { AgGridReact } from 'ag-grid-react';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
+
+const GridComponent: React.FC = () => {
+  const [rowData, setRowData] = useState<any[]>([]);
+
+  const columnDefs = [
+    { headerName: 'ID', field: 'id' },
+    { headerName: 'Name', field: 'name' },
+    { headerName: 'Value', field: 'value' },
+  ];
+
+  useEffect(() => {
+    // Simulate API call with dummy data
+    setTimeout(() => {
+      const data = [
+        { id: 1, name: 'John Doe', value: 100 },
+        { id: 2, name: 'Jane Smith', value: 200 },
+        { id: 3, name: 'Alice Johnson', value: 300 },
+      ];
+      setRowData(data);
+    }, 1000); // Delay of 1 second
+  }, []);
+
+  return (
+    <div className="ag-theme-alpine" style={{ height: 400, width: 600 }}>
+      <AgGridReact
+        rowData={rowData}
+        columnDefs={columnDefs}
+        defaultColDef={{ sortable: true, filter: true }}
+      />
+    </div>
+  );
+};
+
+export default GridComponent;
