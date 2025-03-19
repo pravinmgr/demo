@@ -1,0 +1,32 @@
+var securityHeader = new SecurityHeader("c12", "Hreme");
+XmlObjectSerializer xmlObjectSerializer = new DataContractSerializer(typeof(SecurityHeader), "Security", "");
+
+AddressHeader addressHeader = AddressHeader.CreateAddressHeader("Security", "http://d.0.xsd", securityHeader, xmlObjectSerializer);
+var endpointAdress = new EndpointAddress(new Uri(_appSettingsKeys.Value.serObjURL), new[] { addressHeader });
+
+var bBO = new BasicHttpBinding();
+bBO.Security.Mode = BasicHttpSecurityMode.Transport;
+bBO.Security.Transport.ClientCredentialType = HttpClientCredentialType.Certificate;
+bBO.TransferMode = TransferMode.Buffered;
+bBO.TextEncoding = Encoding.UTF8;
+bBO.UseDefaultWebProxy = false;
+bBO.ProxyAddress = new Uri("http://prox.test.com:80");
+bBO.BypassProxyOnLocal = false;
+bBO.AllowCookies = false;
+
+// 🔹 Enable Kerberos Authentication for the Proxy
+bBO.UseDefaultWebProxy = false;
+bBO.ProxyAddress = new Uri("http://prox.test.com:80");
+bBO.Security.Transport.ProxyCredentialType = HttpProxyCredentialType.Windows;  // Kerberos Authentication for Proxy
+bBO.Security.Transport.Realm = "YourKerberosRealm"; // Set the Kerberos realm if required
+
+// Create the WCF client
+var serObj = new IncidentManagementInboundPortClient(bBO, endpointAdress);
+serObj.Endpoint.EndpointBehaviors.Add(new WsSecurityEndpointBehavior("c12", "Hreme"));
+
+// 🔹 Set Kerberos Authentication for the WCF Service
+var endpointClientbehavior = new ClientCredentials();
+endpointClientbehavior.Windows.AllowedImpersonationLevel = System.Security.Principal.TokenImpersonationLevel.Impersonation;
+endpointClientbehavior.Windows.ClientCredential = CredentialCache.DefaultNetworkCredentials; // Use current user's credentials
+
+serObj.Endpoint.EndpointBehaviors.Add(endpointClientbehavior);
