@@ -1,0 +1,93 @@
+using System.ServiceModel.Dispatcher;
+using System.ServiceModel.Channels;
+using System.Security.Cryptography.X509Certificates;
+using System.Net;
+using System.Text;
+using System.Xml;
+
+public class DetailedLoggingInspector : IClientMessageInspector
+{
+    private readonly X509Certificate2 _certificate;
+
+    public DetailedLoggingInspector(X509Certificate2 certificate)
+    {
+        _certificate = certificate;
+    }
+
+    public void AfterReceiveReply(ref Message reply, object correlationState)
+    {
+        var buffer = reply.CreateBufferedCopy(int.MaxValue);
+        var copy = buffer.CreateMessage();
+        reply = buffer.CreateMessage();
+
+        Console.WriteLine("🟩 SOAP RESPONSE:");
+        Console.WriteLine(MessageToString(copy));
+    }
+
+    public object BeforeSendRequest(ref Message request, IClientChannel channel)
+    {
+        var buffer = request.CreateBufferedCopy(int.MaxValue);
+        var copy = buffer.CreateMessage();
+        request = buffer.CreateMessage();
+
+        Console.WriteLine("🟦 SOAP REQUEST:");
+        Console.WriteLine(MessageToString(copy));
+
+        Console.WriteLine("🔐 Certificate Details:");
+        Console.WriteLine($"Subject: {_certificate.Subject}");
+        Console.WriteLine($"Issuer: {_certificate.Issuer}");
+        Console.WriteLine($"Thumbprint: {_certificate.Thumbprint}");
+        Console.WriteLine($"Valid From: {_certificate.NotBefore}");
+        Console.WriteLine($"Valid To: {_certificate.NotAfter}");
+
+        Console.WriteLine("🌐 Proxy: " + WebRequest.DefaultWebProxy?.GetProxy(new Uri("https://your-service-url")));
+
+        return null;
+    }
+
+    private string MessageToString(Message message)
+    {
+        var sb = new StringBuilder();
+        using var writer = XmlWriter.Create(sb, new XmlWriterSettings { Indent = true });
+        message.WriteMessage(writer);
+        writer.Flush();
+        return sb.ToString();
+    }
+}
+///
+
+
+public class DetailedLoggingBehavior : IEndpointBehavior
+{
+    private readonly X509Certificate2 _cert;
+
+    public DetailedLoggingBehavior(X509Certificate2 cert)
+    {
+        _cert = cert;
+    }
+
+    public void ApplyClientBehavior(ServiceEndpoint endpoint, ClientRuntime clientRuntime)
+    {
+        clientRuntime.MessageInspectors.Add(new DetailedLoggingInspector(_cert));
+    }
+
+    public void AddBindingParameters(ServiceEndpoint endpoint, BindingParameterCollection bindingParameters) { }
+    public void ApplyDispatchBehavior(ServiceEndpoint endpoint, EndpointDispatcher endpointDispatcher) { }
+    public void Validate(ServiceEndpoint endpoint) { }
+}
+
+//
+
+var cert = new X509Store(StoreName.My, StoreLocation.LocalMachine);
+cert.Open(OpenFlags.ReadOnly);
+var certificate = cert.Certificates
+    .Find(X509FindType.FindBySubjectName, "your-cert-subject-name", false)[0];
+
+client.ClientCredentials.ClientCertificate.Certificate = certificate;
+
+// Add logging behavior
+client.Endpoint.EndpointBehaviors.Add(new DetailedLoggingBehavior(certificate));
+
+// Call your service
+var response = client.CreateServiceRequest(request);
+
