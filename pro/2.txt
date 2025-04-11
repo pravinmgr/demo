@@ -1,0 +1,160 @@
+///
+
+using System.ServiceModel.Dispatcher;
+using System.ServiceModel.Channels;
+using System.ServiceModel;
+using System.Security.Cryptography.X509Certificates;
+using System.Net;
+using System.Text;
+using System.Xml;
+using System.IO;
+using System;
+
+public class DetailedLoggingInspector : IClientMessageInspector
+{
+    private readonly X509Certificate2 _certificate;
+    private readonly string _logDirectory;
+    private readonly string _serviceUrl;
+
+    public DetailedLoggingInspector(X509Certificate2 certificate, string serviceUrl, string logDirectory = "Logs")
+    {
+        _certificate = certificate;
+        _logDirectory = logDirectory;
+        _serviceUrl = serviceUrl;
+
+        if (!Directory.Exists(_logDirectory))
+            Directory.CreateDirectory(_logDirectory);
+    }
+
+    public void AfterReceiveReply(ref Message reply, object correlationState)
+    {
+        var buffer = reply.CreateBufferedCopy(int.MaxValue);
+        var copy = buffer.CreateMessage();
+        reply = buffer.CreateMessage();
+
+        var logPath = GetLogFilePath();
+        using var writer = new StreamWriter(logPath, true);
+
+        writer.WriteLine();
+        writer.WriteLine("📩 SOAP RESPONSE BODY:");
+        writer.WriteLine(MessageToString(copy));
+    }
+
+    public object BeforeSendRequest(ref Message request, IClientChannel channel)
+    {
+        var buffer = request.CreateBufferedCopy(int.MaxValue);
+        var copy = buffer.CreateMessage();
+        request = buffer.CreateMessage();
+
+        var logPath = GetLogFilePath();
+        using var writer = new StreamWriter(logPath, false);
+
+        // 1. Server Request URL
+        writer.WriteLine($"🌍 REQUEST URL: {_serviceUrl}");
+
+        // 2. Proxy Info
+        Uri proxyUri = WebRequest.DefaultWebProxy?.GetProxy(new Uri(_serviceUrl));
+        writer.WriteLine($"🌐 PROXY: {proxyUri}");
+
+        // 3. WCF Channel Properties
+        writer.WriteLine("\n🔧 CHANNEL PROPERTIES:");
+        writer.WriteLine($"SessionId: {channel.SessionId}");
+        writer.WriteLine($"State: {channel.State}");
+        writer.WriteLine($"IsOpen: {channel.State == CommunicationState.Opened}");
+
+        // 4. SOAP Headers
+        writer.WriteLine("\n📨 SOAP HEADERS:");
+        var headerXml = new StringBuilder();
+        using (var xmlWriter = XmlWriter.Create(headerXml, new XmlWriterSettings { Indent = true }))
+        {
+            for (int i = 0; i < copy.Headers.Count; i++)
+            {
+                copy.Headers.WriteHeader(i, xmlWriter);
+            }
+        }
+        writer.WriteLine(headerXml.ToString());
+
+        // 5. SOAP Body
+        writer.WriteLine("\n📨 SOAP BODY:");
+        writer.WriteLine(MessageToString(copy));
+
+        // 6. Certificate Info
+        writer.WriteLine("\n🔐 CERTIFICATE DETAILS:");
+        writer.WriteLine($"Subject: {_certificate.Subject}");
+        writer.WriteLine($"Issuer: {_certificate.Issuer}");
+        writer.WriteLine($"Thumbprint: {_certificate.Thumbprint}");
+        writer.WriteLine($"Valid From: {_certificate.NotBefore}");
+        writer.WriteLine($"Valid To: {_certificate.NotAfter}");
+
+        return null;
+    }
+
+    private string MessageToString(Message message)
+    {
+        var sb = new StringBuilder();
+        using var writer = XmlWriter.Create(sb, new XmlWriterSettings { Indent = true });
+        message.WriteMessage(writer);
+        writer.Flush();
+        return sb.ToString();
+    }
+
+    private string GetLogFilePath()
+    {
+        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        return Path.Combine(_logDirectory, $"WCF_Log_{timestamp}.txt");
+    }
+}
+
+
+
+///
+
+using System.ServiceModel.Description;
+using System.Security.Cryptography.X509Certificates;
+
+public class DetailedLoggingBehavior : IEndpointBehavior
+{
+    private readonly X509Certificate2 _cert;
+    private readonly string _serviceUrl;
+    private readonly string _logDirectory;
+
+    public DetailedLoggingBehavior(X509Certificate2 cert, string serviceUrl, string logDirectory = "Logs")
+    {
+        _cert = cert;
+        _serviceUrl = serviceUrl;
+        _logDirectory = logDirectory;
+    }
+
+    public void ApplyClientBehavior(ServiceEndpoint endpoint, ClientRuntime clientRuntime)
+    {
+        clientRuntime.MessageInspectors.Add(new DetailedLoggingInspector(_cert, _serviceUrl, _logDirectory));
+    }
+
+    public void AddBindingParameters(ServiceEndpoint endpoint, BindingParameterCollection bindingParameters) { }
+    public void ApplyDispatchBehavior(ServiceEndpoint endpoint, EndpointDispatcher endpointDispatcher) { }
+    public void Validate(ServiceEndpoint endpoint) { }
+}
+
+
+
+//
+
+
+// Load the certificate
+var certStore = new X509Store(StoreName.My, StoreLocation.LocalMachine);
+certStore.Open(OpenFlags.ReadOnly);
+var certificate = certStore.Certificates
+    .Find(X509FindType.FindBySubjectName, "your-cert-subject-name", false)[0];
+certStore.Close();
+
+// Get the endpoint URL
+var serviceUrl = client.Endpoint.Address.Uri.ToString();
+
+// Assign certificate
+client.ClientCredentials.ClientCertificate.Certificate = certificate;
+
+// Add logging behavior
+client.Endpoint.EndpointBehaviors.Add(new DetailedLoggingBehavior(certificate, serviceUrl));
+
+// Make your call
+var response = client.CreateServiceRequest(request);
