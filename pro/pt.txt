@@ -1,0 +1,60 @@
+using System.ServiceModel.Dispatcher;
+using System.ServiceModel.Channels;
+using System.Diagnostics;
+
+public class LoggingMessageInspector : IClientMessageInspector
+{
+    public void AfterReceiveReply(ref Message reply, object correlationState)
+    {
+        var buffer = reply.CreateBufferedCopy(int.MaxValue);
+        var messageCopy = buffer.CreateMessage();
+        reply = buffer.CreateMessage(); // Restore the original message
+
+        var responseXml = messageCopy.ToString();
+        Debug.WriteLine("Received SOAP Response:");
+        Debug.WriteLine(responseXml);
+    }
+
+    public object BeforeSendRequest(ref Message request, System.ServiceModel.IClientChannel channel)
+    {
+        var buffer = request.CreateBufferedCopy(int.MaxValue);
+        var messageCopy = buffer.CreateMessage();
+        request = buffer.CreateMessage(); // Restore the original message
+
+        var requestXml = messageCopy.ToString();
+        Debug.WriteLine("Sending SOAP Request:");
+        Debug.WriteLine(requestXml);
+
+        return null;
+    }
+}
+
+
+////
+
+using System.ServiceModel.Description;
+using System.ServiceModel.Dispatcher;
+
+public class LoggingEndpointBehavior : IEndpointBehavior
+{
+    public void AddBindingParameters(ServiceEndpoint endpoint, BindingParameterCollection bindingParameters) { }
+
+    public void ApplyClientBehavior(ServiceEndpoint endpoint, ClientRuntime clientRuntime)
+    {
+        clientRuntime.MessageInspectors.Add(new LoggingMessageInspector());
+    }
+
+    public void ApplyDispatchBehavior(ServiceEndpoint endpoint, EndpointDispatcher endpointDispatcher) { }
+
+    public void Validate(ServiceEndpoint endpoint) { }
+}
+
+
+//
+
+var client = new NTRServiceClient();
+
+client.Endpoint.EndpointBehaviors.Add(new LoggingEndpointBehavior());
+
+// Now make your call
+var response = client.CreateServiceRequest(request);
