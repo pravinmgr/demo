@@ -1,0 +1,40 @@
+using System.ServiceModel.Dispatcher;
+using System.ServiceModel.Channels;
+using System.Text;
+using System.Xml;
+
+public class LoggingMessageInspector : IClientMessageInspector
+{
+    public void AfterReceiveReply(ref Message reply, object correlationState)
+    {
+        var buffer = reply.CreateBufferedCopy(int.MaxValue);
+        var copy = buffer.CreateMessage();
+        reply = buffer.CreateMessage(); // restore original
+
+        string response = MessageToString(copy);
+        Console.WriteLine("🟩 SOAP RESPONSE:");
+        Console.WriteLine(response);
+    }
+
+    public object BeforeSendRequest(ref Message request, IClientChannel channel)
+    {
+        var buffer = request.CreateBufferedCopy(int.MaxValue);
+        var copy = buffer.CreateMessage();
+        request = buffer.CreateMessage(); // restore original
+
+        string requestMessage = MessageToString(copy);
+        Console.WriteLine("🟦 SOAP REQUEST:");
+        Console.WriteLine(requestMessage);
+
+        return null;
+    }
+
+    private string MessageToString(Message message)
+    {
+        var sb = new StringBuilder();
+        using var writer = XmlWriter.Create(sb, new XmlWriterSettings { Indent = true });
+        message.WriteMessage(writer);
+        writer.Flush();
+        return sb.ToString();
+    }
+}
