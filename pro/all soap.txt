@@ -1,0 +1,102 @@
+using System.ServiceModel.Description;
+using System.Security.Cryptography.X509Certificates;
+//////////
+
+using System.ServiceModel.Dispatcher;
+using System.ServiceModel.Channels;
+using System.Security.Cryptography.X509Certificates;
+using System.Net;
+using System.Text;
+using System.Xml;
+using System.IO;
+
+public class DetailedLoggingInspector : IClientMessageInspector
+{
+    private readonly X509Certificate2 _certificate;
+    private readonly string _logDirectory;
+
+    public DetailedLoggingInspector(X509Certificate2 certificate, string logDirectory = "Logs")
+    {
+        _certificate = certificate;
+        _logDirectory = logDirectory;
+
+        if (!Directory.Exists(_logDirectory))
+            Directory.CreateDirectory(_logDirectory);
+    }
+
+    public void AfterReceiveReply(ref Message reply, object correlationState)
+    {
+        var buffer = reply.CreateBufferedCopy(int.MaxValue);
+        var copy = buffer.CreateMessage();
+        reply = buffer.CreateMessage();
+
+        var responseXml = MessageToString(copy);
+        File.WriteAllText(Path.Combine(_logDirectory, "ResponseBody.xml"), responseXml);
+    }
+
+    public object BeforeSendRequest(ref Message request, IClientChannel channel)
+    {
+        var buffer = request.CreateBufferedCopy(int.MaxValue);
+        var copy = buffer.CreateMessage();
+        request = buffer.CreateMessage();
+
+        // Full SOAP message
+        var fullSoapXml = MessageToString(copy);
+        File.WriteAllText(Path.Combine(_logDirectory, "RequestBody.xml"), fullSoapXml);
+
+        // Just the SOAP headers
+        var headerXml = new StringBuilder();
+        using (var writer = XmlWriter.Create(headerXml, new XmlWriterSettings { Indent = true }))
+        {
+            for (int i = 0; i < copy.Headers.Count; i++)
+            {
+                copy.Headers.WriteHeader(i, writer);
+            }
+        }
+        File.WriteAllText(Path.Combine(_logDirectory, "RequestHeaders.xml"), headerXml.ToString());
+
+        // Certificate details
+        var certDetails = new StringBuilder();
+        certDetails.AppendLine("🔐 Certificate Details:");
+        certDetails.AppendLine($"Subject: {_certificate.Subject}");
+        certDetails.AppendLine($"Issuer: {_certificate.Issuer}");
+        certDetails.AppendLine($"Thumbprint: {_certificate.Thumbprint}");
+        certDetails.AppendLine($"Valid From: {_certificate.NotBefore}");
+        certDetails.AppendLine($"Valid To: {_certificate.NotAfter}");
+        File.WriteAllText(Path.Combine(_logDirectory, "CertificateInfo.txt"), certDetails.ToString());
+
+        return null;
+    }
+
+    private string MessageToString(Message message)
+    {
+        var sb = new StringBuilder();
+        using var writer = XmlWriter.Create(sb, new XmlWriterSettings { Indent = true });
+        message.WriteMessage(writer);
+        writer.Flush();
+        return sb.ToString();
+    }
+}
+
+
+/////////
+public class DetailedLoggingBehavior : IEndpointBehavior
+{
+    private readonly X509Certificate2 _cert;
+    private readonly string _logDirectory;
+
+    public DetailedLoggingBehavior(X509Certificate2 cert, string logDirectory = "Logs")
+    {
+        _cert = cert;
+        _logDirectory = logDirectory;
+    }
+
+    public void ApplyClientBehavior(ServiceEndpoint endpoint, ClientRuntime clientRuntime)
+    {
+        clientRuntime.MessageInspectors.Add(new DetailedLoggingInspector(_cert, _logDirectory));
+    }
+
+    public void AddBindingParameters(ServiceEndpoint endpoint, BindingParameterCollection bindingParameters) { }
+    public void ApplyDispatchBehavior(ServiceEndpoint endpoint, EndpointDispatcher endpointDispatcher) { }
+    public void Validate(ServiceEndpoint endpoint) { }
+}
