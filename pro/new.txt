@@ -1,0 +1,89 @@
+using System;
+using System.Net;
+using System.Net.Http;
+using System.Security.Cryptography.X509Certificates;
+using System.ServiceModel;
+using System.ServiceModel.Channels;
+using System.ServiceModel.Description;
+using System.ServiceModel.Dispatcher;
+using System.Text;
+using System.Xml;
+
+public class SoapLogger
+{
+    public static void LogAllStoreCertificates()
+    {
+        var store = new X509Store(StoreLocation.CurrentUser);
+        store.Open(OpenFlags.ReadOnly);
+        Console.WriteLine("Certificates in CurrentUser store:");
+        foreach (var cert in store.Certificates)
+        {
+            Console.WriteLine($"Subject: {cert.Subject}");
+            Console.WriteLine($"Issuer: {cert.Issuer}");
+            Console.WriteLine($"Thumbprint: {cert.Thumbprint}");
+            Console.WriteLine($"Valid from: {cert.NotBefore} to {cert.NotAfter}");
+            Console.WriteLine("-----------------------------------------------------");
+        }
+        store.Close();
+    }
+
+    public class Inspector : IClientMessageInspector
+    {
+        public object BeforeSendRequest(ref Message request, IClientChannel channel)
+        {
+            var buffer = request.CreateBufferedCopy(int.MaxValue);
+            var copy = buffer.CreateMessage();
+            request = buffer.CreateMessage(); // reset for sending
+
+            var sb = new StringBuilder();
+            sb.AppendLine("=== SOAP REQUEST ===");
+            sb.AppendLine(copy.ToString()); // toString can be poor, use WriteMessage instead
+            using (var sw = new StringWriter())
+            using (var xw = XmlWriter.Create(sw, new XmlWriterSettings { Indent = true }))
+            {
+                copy.WriteMessage(xw);
+                xw.Flush();
+                sb.AppendLine(sw.ToString());
+            }
+
+            Console.WriteLine(sb.ToString());
+            return null;
+        }
+
+        public void AfterReceiveReply(ref Message reply, object correlationState)
+        {
+            var buffer = reply.CreateBufferedCopy(int.MaxValue);
+            var copy = buffer.CreateMessage();
+            reply = buffer.CreateMessage(); // reset for processing
+
+            var sb = new StringBuilder();
+            sb.AppendLine("=== SOAP RESPONSE ===");
+            using (var sw = new StringWriter())
+            using (var xw = XmlWriter.Create(sw, new XmlWriterSettings { Indent = true }))
+            {
+                copy.WriteMessage(xw);
+                xw.Flush();
+                sb.AppendLine(sw.ToString());
+            }
+
+            Console.WriteLine(sb.ToString());
+        }
+    }
+
+    public class Behavior : IEndpointBehavior
+    {
+        public void ApplyClientBehavior(ServiceEndpoint endpoint, ClientRuntime clientRuntime)
+        {
+            clientRuntime.MessageInspectors.Add(new Inspector());
+        }
+
+        public void AddBindingParameters(ServiceEndpoint endpoint, BindingParameterCollection bindingParameters) { }
+        public void ApplyDispatchBehavior(ServiceEndpoint endpoint, EndpointDispatcher endpointDispatcher) { }
+        public void Validate(ServiceEndpoint endpoint) { }
+    }
+
+    public static void AddSoapLogging<T>(ClientBase<T> client) where T : class
+    {
+        client.Endpoint.EndpointBehaviors.Add(new Behavior());
+    }
+}
